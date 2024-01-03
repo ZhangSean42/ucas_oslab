@@ -128,7 +128,7 @@ static void init_pcb(int tasknum)
         ptr_t user_stack = allocUserPage(1) + PAGE_SIZE;
         pcb[i].pid = i + 2;
         pcb[i].status = TASK_READY;
-        add_to_list(&ready_queue, &pcb[i].ready_list);
+        add_to_list(&ready_queue, &pcb[i].list);
         init_pcb_stack(kernel_stack, user_stack, task_entry_point, &pcb[i]);
         pcb_count++;
     }

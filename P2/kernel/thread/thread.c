@@ -28,7 +28,7 @@ void thread_schedule()
     pre_running = current_running;
     
     pre_running->status = TASK_READY;
-    add_to_list(&ready_queue, &(pre_running->ready_list));
+    add_to_list(&ready_queue, &(pre_running->list));
     
     p = ready_queue.next;
     while (list_to_pcb(p)->pid != pre_running->pid){
@@ -50,7 +50,7 @@ void init_thread_pcb(uint64_t func_entry, int thread_rank)
     pcb[pcb_count].pid    = current_running->pid;
     pcb[pcb_count].status = TASK_READY;
     pcb[pcb_count].user_sp = user_stack;
-    add_to_list(&ready_queue, &pcb[pcb_count].ready_list);
+    add_to_list(&ready_queue, &pcb[pcb_count].list);
     init_thread_stack(kernel_stack, user_stack, func_entry, thread_rank, &pcb[pcb_count]);
 }
 
@@ -73,6 +73,6 @@ void init_thread_stack(uint64_t kernel_stack, uint64_t user_stack, uint64_t func
 
 static inline pcb_t* list_to_pcb(list_node_t *p)
 {
-    unsigned offset = (unsigned)(&(((pcb_t*)0)->ready_list));
+    unsigned offset = (unsigned)(&(((pcb_t*)0)->list));
     return (pcb_t*)((void*)p - offset);
 }

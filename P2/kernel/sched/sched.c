@@ -8,7 +8,6 @@
 #include <assert.h>
 
 static inline pcb_t* list_to_pcb(list_node_t*);
-pcb_t* lock_to_pcb(list_node_t*);
 pcb_t pcb[NUM_MAX_TASK];
 const ptr_t pid0_stack = INIT_KERNEL_STACK + PAGE_SIZE;
 pcb_t pid0_pcb = {
@@ -19,7 +18,10 @@ pcb_t pid0_pcb = {
 };
 
 LIST_HEAD(ready_queue);
+spin_lock_t ready_lock = {UNLOCKED};
 LIST_HEAD(sleep_queue);
+spin_lock_t sleep_lock = {UNLOCKED};
+spin_lock_t kalloc_lock = {UNLOCKED};
 
 /* current running task PCB */
 pcb_t * volatile current_running;
@@ -37,7 +39,7 @@ void do_scheduler(void)
             pcb_t *pcb = list_to_pcb(p);
             p = p->next;
             pcb->status = TASK_READY;
-            add_to_list(&ready_queue, &pcb->ready_list);
+            add_to_list(&ready_queue, &pcb->list);
         }
         else{
           p = p->next;
@@ -54,7 +56,7 @@ void do_scheduler(void)
     if (pre_running->status == TASK_BLOCKED)
         goto choose_runnable;
     pre_running->status = TASK_READY;
-    add_to_list(&ready_queue, &(pre_running->ready_list));
+    add_to_list(&ready_queue, &(pre_running->list));
 choose_runnable:
     current_running = list_to_pcb(ready_queue.next);
     leave_out_list(ready_queue.next); 
@@ -71,35 +73,37 @@ void do_sleep(uint32_t sleep_time)
     // 1. block the current_running
     // 2. set the wake up time for the blocked task
     // 3. reschedule because the current_running is blocked.
-    do_block(&current_running->ready_list, &sleep_queue);
+    spin_lock_acquire(&sleep_lock);
     current_running->wakeup_time = get_timer() + sleep_time;
-    do_scheduler();
+    
+    do_block(&current_running->list, &sleep_queue, &sleep_lock);
+    spin_lock_release(&sleep_lock);
 }
 
-void do_block(list_node_t *pcb_node, list_head *queue)
+void do_block(list_node_t *pcb_node, list_head *queue, spin_lock_t *lock)
 {
     // TODO: [p2-task2] block the pcb task into the block queue
     add_to_list(queue, pcb_node);
     current_running->status = TASK_BLOCKED;
+    spin_lock_release(lock);
+    
+    do_scheduler();
+    spin_lock_acquire(lock);
 }
 
 void do_unblock(list_node_t *pcb_node)
 {
     // TODO: [p2-task2] unblock the `pcb` from the block queue
     leave_out_list(pcb_node);
-    pcb_t *p = lock_to_pcb(pcb_node);
+    pcb_t *p = list_to_pcb(pcb_node);
     p->status = TASK_READY;
-    add_to_list(&ready_queue, &p->ready_list);
+    spin_lock_acquire(&ready_lock);
+    add_to_list(&ready_queue, &p->list);
+    spin_lock_release(&ready_lock);
 }
 
 static inline pcb_t* list_to_pcb(list_node_t *p)
 {
-    unsigned offset = (unsigned)(&(((pcb_t*)0)->ready_list));
-    return (pcb_t*)((void*)p - offset);
-}
-
-pcb_t* lock_to_pcb(list_node_t *p)
-{
-    unsigned offset = (unsigned)(&(((pcb_t*)0)->lock_list));
+    unsigned offset = (unsigned)(&(((pcb_t*)0)->list));
     return (pcb_t*)((void*)p - offset);
 }

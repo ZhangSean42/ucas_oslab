@@ -31,6 +31,7 @@
 
 #include <type.h>
 #include <os/list.h>
+#include <os/lock.h>
 
 #define NUM_MAX_TASK 16
 
@@ -70,8 +71,7 @@ typedef struct pcb
     reg_t user_sp;
 
     /* previous, next pointer */
-    list_node_t ready_list;
-    list_node_t lock_list;
+    list_node_t list;
 
     /* process id */
     pid_t pid;
@@ -106,7 +106,7 @@ extern void switch_to(pcb_t *prev, pcb_t *next);
 void do_scheduler(void);
 void do_sleep(uint32_t);
 
-void do_block(list_node_t *, list_head *queue);
+void do_block(list_node_t *, list_head *queue, spin_lock_t *lock);
 void do_unblock(list_node_t *);
 
 /************************************************************/

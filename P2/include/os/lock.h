@@ -47,6 +47,8 @@ typedef struct mutex_lock
     spin_lock_t lock;
     list_head block_queue;
     int key;
+    volatile lock_status_t mutex_status;
+    int owner;
 } mutex_lock_t;
 
 void init_locks(void);
