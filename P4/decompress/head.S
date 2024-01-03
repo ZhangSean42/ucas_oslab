@@ -1,0 +1,31 @@
+#include <asm.h>
+#include <csr.h>
+
+#define DECOMPRESS_STACK		0x52500000
+
+.section ".entry_function","ax"
+ENTRY(_start)
+  /* Mask all interrupts */
+  csrw CSR_SIE, zero
+  csrw CSR_SIP, zero
+
+  /* TODO: [p1-task2] clear BSS for flat non-ELF images */
+  la t1, __bss_start
+  la t2,  __BSS_END__
+  
+clear_bss:
+  beq t1, t2, set_compress_stack
+  sb x0, 0(t1)
+  addi t1, t1, 1
+  j clear_bss
+
+  /* TODO: [p1-task2] setup C environment */
+set_compress_stack:
+  li sp, DECOMPRESS_STACK
+  j main
+
+loop:
+  wfi
+  j loop
+
+END(_start)

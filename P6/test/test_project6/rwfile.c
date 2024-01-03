@@ -1,0 +1,33 @@
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+
+static char buff[64];
+
+int main(void)
+{
+    int fd = sys_fopen("1.txt", O_RDWR);
+    sys_move_cursor(0, 0);
+
+    // write 'hello world!' * 10
+    sys_lseek(fd, 0, SEEK_SET);
+    for (int i = 0; i < 10; i++)
+    {
+        sys_fwrite(fd, "hello world!\n", 13);
+    }
+
+    // read
+    sys_lseek(fd, 0, SEEK_SET);
+    for (int i = 0; i < 10; i++)
+    {
+        sys_fread(fd, buff, 13);
+        for (int j = 0; j < 13; j++)
+        {
+            printf("%c", buff[j]);
+        }
+    }
+
+    sys_fclose(fd);
+
+    return 0;
+}
